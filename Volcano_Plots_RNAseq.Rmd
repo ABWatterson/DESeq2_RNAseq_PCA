@@ -1,0 +1,586 @@
+---
+title: "Volcano_Plots_RNAseq"
+author: "Alex Watterson"
+date: "2023-10-02"
+output: html_document
+---
+
+#.Run before start
+
+setwd("/Users/aw34/Documents/Analysis_programs/R")
+
+
+#1. Load packages and set WD:
+```{r}
+library(tidyverse)
+library(reshape2)
+library(ggrepel)
+library(stringr)
+library(readr)
+library(ggplot2)
+```
+
+
+#2. Reed in comparison files:
+```{r}
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL.tsv", show_col_types = F)
+VCaPCHD1g2_24h_vs_VCaPNTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPCHD1g2_IFNg24h_vs_VCaPNTC_IFNg24h.tsv", show_col_types = F)
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL.tsv", show_col_types = F)
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPCHD1g2MAP3K7g2_IFNg24h_vs_VCaPNTC_IFNg24h.tsv", show_col_types = F)
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL.tsv", show_col_types = F)
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPMAP3K7g2_IFNg24h_vs_VCaPNTC_IFNg24h.tsv", show_col_types = F)
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL.tsv", show_col_types = F)
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/VCaP_CHD1_MAP3K7_IFNg/Deseq2/VCaPMAP3K7g1_IFNg24h_vs_VCaPNTC_IFNg24h.tsv", show_col_types = F)
+```
+
+#3. Plotting using volcano plot (L2FC vs pvalue)
+```{r}
+#CHD1g2_CTRL
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit <- "NON"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1] <- "High"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- "Low"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0] <- "High"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < 0] <- "Low"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL <- VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL[order(VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit), ]
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Label <- NA
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1 | VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$gene[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange != "NO"]
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$gene == "CDX2"] <- "CDX2"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL$gene == "CHD1"] <- "CHD1"
+VCaP_CHD1g2_CTRL <- ggplot(VCaPCHD1g2_CTRL_vs_VCaPNTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP CHD1g2 CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 009)
+
+VCaP_CHD1g2_CTRL
+
+ggsave("VCaP_CHD1g2_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#CHD1g2_IFNg_24h
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit <- "NON"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1] <- "High"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- "Low"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPCHD1g2_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Expression[VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0] <- "High"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Expression[VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange < 0] <- "Low"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Expression[VCaPCHD1g2_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h <- VCaPCHD1g2_24h_vs_VCaPNTC_24h[order(VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit), ]
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Label <- NA
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1 | VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- VCaPCHD1g2_24h_vs_VCaPNTC_24h$gene[VCaPCHD1g2_24h_vs_VCaPNTC_24h$log2FoldChange != "NO"]
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2_24h_vs_VCaPNTC_24h$gene == "CDX2"] <- "CDX2"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2_24h_vs_VCaPNTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+VCaPCHD1g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2_24h_vs_VCaPNTC_24h$gene == "CHD1"] <- "CHD1"
+VCaP_CHD1g2_24h <- ggplot(VCaPCHD1g2_24h_vs_VCaPNTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP CHD1g2 IFNg 24h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 010)
+
+VCaP_CHD1g2_24h <- VCaP_CHD1g2_24h + geom_text_repel(data = subset(VCaPCHD1g2_24h_vs_VCaPNTC_24h, Label == "CDX2"))
+
+VCaP_CHD1g2_24h
+
+ggsave("VCaP_CHD1g2_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#CHD1g2/MAP3K7g2_CTRL
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit <- "NON"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1] <- "High"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- "Low"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0] <- "High"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < 0] <- "Low"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL <- VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL[order(VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit), ]
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label <- NA
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1 | VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange != "NO"]
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene == "CDX2"] <- "CDX2"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene == "CHD1"] <- "CHD1"
+VCaP_CHD1g2MAP3K7g2_CTRL <- ggplot(VCaPCHD1g2MAP3K7g2_CTRL_vs_VCaPNTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP CHD1g2MAP3K7g2 CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 011)
+
+VCaP_CHD1g2MAP3K7g2_CTRL
+
+ggsave("VCaP_CHD1g2MAP3K7g2_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#CHD1g2/MAP3K7g2_IFNg_24h
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit <- "NON"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1] <- "High"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- "Low"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Expression[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0] <- "High"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Expression[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange < 0] <- "Low"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Expression[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h <- VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h[order(VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit), ]
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Label <- NA
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1 | VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$gene[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange != "NO"]
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$gene == "CDX2"] <- "CDX2"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h$gene == "CHD1"] <- "CHD1"
+VCaP_CHD1g2MAP3K7g2_24h <- ggplot(VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP CHD1g2/MAP3K7g2 IFNg 24h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 012)
+
+VCaP_CHD1g2MAP3K7g2_24h <- VCaP_CHD1g2MAP3K7g2_24h + geom_text_repel(data = subset(VCaPCHD1g2MAP3K7g2_24h_vs_VCaPNTC_24h, Label == "CDX2"))
+
+VCaP_CHD1g2MAP3K7g2_24h
+
+ggsave("VCaP_CHD1g2MAP3K7g2_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#MAP3K7g2_CTRL
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit <- "NON"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1] <- "High"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- "Low"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0] <- "High"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < 0] <- "Low"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL <- VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL[order(VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit), ]
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label <- NA
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1 | VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$log2FoldChange != "NO"]
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene == "CDX2"] <- "CDX2"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL$gene == "CHD1"] <- "CHD1"
+VCaP_MAP3K7g2_CTRL <- ggplot(VCaPMAP3K7g2_CTRL_vs_VCaPNTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP MAP3K7g2 CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 013)
+
+VCaP_MAP3K7g2_CTRL
+
+ggsave("VCaP_MAP3K7g2_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#MAP3K7g2_IFNg_24h
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit <- "NON"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1] <- "High"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- "Low"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Expression[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0] <- "High"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Expression[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange < 0] <- "Low"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Expression[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h <- VCaPMAP3K7g2_24h_vs_VCaPNTC_24h[order(VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange_Hit), ]
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Label <- NA
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1 | VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$gene[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$log2FoldChange != "NO"]
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$gene == "CDX2"] <- "CDX2"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g2_24h_vs_VCaPNTC_24h$gene == "CHD1"] <- "CHD1"
+VCaP_MAP3K7g2_24h <- ggplot(VCaPMAP3K7g2_24h_vs_VCaPNTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP MAP3K7g2 IFNg 24h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 014)
+
+VCaP_MAP3K7g2_24h
+
+ggsave("VCaP_MAP3K7g2_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#MAP3K7g1_CTRL
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit <- "NON"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1] <- "High"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- "Low"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0] <- "High"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < 0] <- "Low"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Expression[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL <- VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL[order(VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange_Hit), ]
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Label <- NA
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange > 0.1 | VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange < -0.1] <- VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$gene[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$log2FoldChange != "NO"]
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$gene == "CDX2"] <- "CDX2"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$Label[VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL$gene == "CHD1"] <- "CHD1"
+VCaP_MAP3K7g1_CTRL <- ggplot(VCaPMAP3K7g1_CTRL_vs_VCaPNTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP MAP3K7g1 CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 015)
+
+VCaP_MAP3K7g1_CTRL
+
+ggsave("VCaP_MAP3K7g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+
+#MAP3K7g1_IFNg_24h
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange_Hit <- "NON"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1] <- "High"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- "Low"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange_Hit[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Expression[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange > 0] <- "High"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Expression[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange < 0] <- "Low"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Expression[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$pvalue > 0.05] <- "Not Significant"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h <- VCaPMAP3K7g1_24h_vs_VCaPNTC_24h[order(VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange_Hit), ]
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Label <- NA
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange > 0.1 | VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange < -0.1] <- VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$gene[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$log2FoldChange != "NO"]
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$gene == "CDX2"] <- "CDX2"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$Label[VCaPMAP3K7g1_24h_vs_VCaPNTC_24h$gene == "CHD1"] <- "CHD1"
+VCaP_MAP3K7g1_24h <- ggplot(VCaPMAP3K7g1_24h_vs_VCaPNTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "VCaP MAP3K7g1 IFNg 24h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 016)
+
+VCaP_MAP3K7g1_24h
+
+ggsave("VCaP_MAP3K7g1_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/VCaP_CHD1MAP3K7/Deseq/")
+```
+
+#HT-29 CHD1/MAP3K7
+
+#2. Reed in comparison files:
+```{r}
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CHD1_MAP3K7_IFNg/Deseq2/HT29CHD1g2_CTRL_vs_HT29NTC_CTRL.tsv", show_col_types = F)
+HT29CHD1g2_24h_vs_HT29NTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CHD1_MAP3K7_IFNg/Deseq2/HT29CHD1g2_IFNg24h_vs_HT29NTC_IFNg24h.tsv", show_col_types = F)
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CHD1_MAP3K7_IFNg/Deseq2/HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL.tsv", show_col_types = F)
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CHD1_MAP3K7_IFNg/Deseq2/HT29CHD1g2MAP3K7g1_IFNg24h_vs_HT29NTC_IFNg24h.tsv", show_col_types = F)
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CHD1_MAP3K7_IFNg/Deseq2/HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL.tsv", show_col_types = F)
+HT29MAP3K7g1_24h_vs_HT29NTC_24h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CHD1_MAP3K7_IFNg/Deseq2/HT29MAP3K7g1_IFNg24h_vs_HT29NTC_IFNg24h.tsv", show_col_types = F)
+```
+
+#3. Plotting using volcano plot (L2FC vs pvalue):
+```{r}
+
+#CHD1g2_CTRL
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit <- "NON"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0.1] <- "High"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0] <- "High"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange < 0] <- "Low"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$gene == "KRT14"] <- "Not Significant"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL <- HT29CHD1g2_CTRL_vs_HT29NTC_CTRL[order(HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit), ]
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Label <- NA
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0.1 | HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange < -0.1] <- HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$gene[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$log2FoldChange != "NO"]
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$gene == "CDX2"] <- "CDX2"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2_CTRL_vs_HT29NTC_CTRL$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2_CTRL <- ggplot(HT29CHD1g2_CTRL_vs_HT29NTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2_CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 022)
+
+HT29_CHD1g2_CTRL <- HT29_CHD1g2_CTRL + geom_text_repel(data = subset(HT29CHD1g2_CTRL_vs_HT29NTC_CTRL, Label == "MAP3K7"))
+
+HT29_CHD1g2_CTRL
+
+ggsave("HT29_CHD1g2_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7/Volcano_Plots/")
+
+#CHD1g2_IFNg_24h
+HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange_Hit <- "NON"
+HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange > 0.1] <- "High"
+HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange < -0.1] <- "Low"
+HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29CHD1g2_24h_vs_HT29NTC_24h$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2_24h_vs_HT29NTC_24h$Expression[HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange > 0] <- "High"
+HT29CHD1g2_24h_vs_HT29NTC_24h$Expression[HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange < 0] <- "Low"
+HT29CHD1g2_24h_vs_HT29NTC_24h$Expression[HT29CHD1g2_24h_vs_HT29NTC_24h$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2_24h_vs_HT29NTC_24h <- HT29CHD1g2_24h_vs_HT29NTC_24h[order(HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange_Hit), ]
+HT29CHD1g2_24h_vs_HT29NTC_24h$Label <- NA
+HT29CHD1g2_24h_vs_HT29NTC_24h$Label[HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange > 0.1 | HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange < -0.1] <- HT29CHD1g2_24h_vs_HT29NTC_24h$gene[HT29CHD1g2_24h_vs_HT29NTC_24h$log2FoldChange != "NO"]
+HT29CHD1g2_24h_vs_HT29NTC_24h$Label[HT29CHD1g2_24h_vs_HT29NTC_24h$gene == "CDX2"] <- "CDX2"
+HT29CHD1g2_24h_vs_HT29NTC_24h$Label[HT29CHD1g2_24h_vs_HT29NTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+HT29CHD1g2_24h_vs_HT29NTC_24h$Label[HT29CHD1g2_24h_vs_HT29NTC_24h$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2_24h <- ggplot(HT29CHD1g2_24h_vs_HT29NTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2_24h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 023)
+
+HT29_CHD1g2_24h <- HT29_CHD1g2_24h + geom_text_repel(data = subset(HT29CHD1g2_24h_vs_HT29NTC_24h, Label == "CHD1"))
+HT29_CHD1g2_24h <- HT29_CHD1g2_24h + geom_text_repel(data = subset(HT29CHD1g2_24h_vs_HT29NTC_24h, Label == "MAP3K7"))
+
+HT29_CHD1g2_24h
+
+ggsave("HT29_CHD1g2_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7/Volcano_Plots/")
+
+#CHD1g2/MAP3K7g1_CTRL
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit <- "NON"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0.1] <- "High"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0] <- "High"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange < 0] <- "Low"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Expression[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL <- HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL[order(HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit), ]
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label <- NA
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0.1 | HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange < -0.1] <- HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange != "NO"]
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene == "CDX2"] <- "CDX2"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene == "CHD1"] <- "CHD1"
+HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL <- HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL[HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene != "KRT6A", ]
+HT29_CHD1g2MAP3K7g1_CTRL <- ggplot(HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2/MAP3K7g1_CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 024)
+
+HT29_CHD1g2MAP3K7g1_CTRL <- HT29_CHD1g2MAP3K7g1_CTRL + geom_text_repel(data = subset(HT29CHD1g2MAP3K7g1_CTRL_vs_HT29NTC_CTRL, Label == "MAP3K7"))
+
+HT29_CHD1g2MAP3K7g1_CTRL
+
+ggsave("HT29_CHD1g2_MAP3K7g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7/Volcano_Plots/")
+
+#CHD1g2/MAP3K7g1_IFNg_24h
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit <- "NON"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange > 0.1] <- "High"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange < -0.1] <- "Low"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Expression[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange > 0] <- "High"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Expression[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange < 0] <- "Low"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Expression[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$pvalue > 0.05] <- "Not Significant"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h <- HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h[order(HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit), ]
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Label <- NA
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange > 0.1 | HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange < -0.1] <- HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$gene[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange != "NO"]
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$gene == "CDX2"] <- "CDX2"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2MAP3K7g1_24h <- ggplot(HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2/MAP3K7g1_24h") +
+  theme_classic(base_size = 20) + geom_text_repel(force = 0.1, seed = 025)
+
+HT29_CHD1g2MAP3K7g1_24h <- HT29_CHD1g2MAP3K7g1_24h + geom_text_repel(data = subset(HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h, Label == "MAP3K7"))
+HT29_CHD1g2MAP3K7g1_24h <- HT29_CHD1g2MAP3K7g1_24h + geom_text_repel(data = subset(HT29CHD1g2MAP3K7g1_24h_vs_HT29NTC_24h, Label == "CHD1"))
+
+HT29_CHD1g2MAP3K7g1_24h
+
+ggsave("HT29_CHD1g2_MAP3K7g1_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7/Volcano_Plots/")
+
+#MAP3K7g1_CTRL
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit <- "NON"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0.1] <- "High"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Expression[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0] <- "High"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Expression[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange < 0] <- "Low"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Expression[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL <- HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL[order(HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange_Hit), ]
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label <- NA
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange > 0.1 | HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange < -0.1] <- HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$log2FoldChange != "NO"]
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene == "CDX2"] <- "CDX2"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$Label[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene == "CHD1"] <- "CHD1"
+HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL <- HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL[HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL$gene != "KRT6A", ]
+HT29_MAP3K7g1_CTRL_1 <- ggplot(HT29MAP3K7g1_CTRL_vs_HT29NTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 MAP3K7g1_CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 026)
+
+HT29_MAP3K7g1_CTRL_1
+
+ggsave("HT29_MAP3K7g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7/Volcano_Plots/")
+
+#MAP3K7g1_IFNg_24h
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit <- "NON"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange > 0.1] <- "High"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange < -0.1] <- "Low"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit[HT29MAP3K7g1_24h_vs_HT29NTC_24h$pvalue > 0.05] <- "Not Significant"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Expression[HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange > 0] <- "High"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Expression[HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange < 0] <- "Low"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Expression[HT29MAP3K7g1_24h_vs_HT29NTC_24h$pvalue > 0.05] <- "Not Significant"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h <- HT29MAP3K7g1_24h_vs_HT29NTC_24h[order(HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange_Hit), ]
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Label <- NA
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange > 0.1 | HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange < -0.1] <- HT29MAP3K7g1_24h_vs_HT29NTC_24h$gene[HT29MAP3K7g1_24h_vs_HT29NTC_24h$log2FoldChange != "NO"]
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29MAP3K7g1_24h_vs_HT29NTC_24h$gene == "CDX2"] <- "CDX2"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29MAP3K7g1_24h_vs_HT29NTC_24h$gene == "MAP3K7"] <- "MAP3K7"
+HT29MAP3K7g1_24h_vs_HT29NTC_24h$Label[HT29MAP3K7g1_24h_vs_HT29NTC_24h$gene == "CHD1"] <- "CHD1"
+HT29_MAP3K7g1_24h_1 <- ggplot(HT29MAP3K7g1_24h_vs_HT29NTC_24h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 MAP3K7g1_24h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 027)
+
+HT29_MAP3K7g1_24h_1
+
+ggsave("HT29_MAP3K7g1_24h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7/Volcano_Plots/")
+```
+
+#HT-29 CHD1/MAP3K7/CDX2
+
+#2. Reed in comparison files:
+```{r}
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL.tsv", show_col_types = F)
+HT29_CDX2g1_72h_vs_HT29_NTC_72h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CDX2g1_IFNg_vs_HT29_NTC_IFNg.tsv", show_col_types = F)
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL.tsv", show_col_types = F)
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CHD1g2MAP3K7g1_IFNg_vs_HT29_NTC_IFNg.tsv", show_col_types = F)
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL.tsv", show_col_types = F)
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CHD1g2MAP3K7g1CDX2g1_IFNg_vs_HT29_NTC_IFNg.tsv", show_col_types = F)
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL.tsv", show_col_types = F)
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h <- read_tsv("/Users/aw34/Documents/Analysis_programs/R/RNAseq_results/HT29_CDX2_IFNg/Dseq2/HT29_CHD1g2MAP3K7g1_IFNg_vs_HT29_CHD1g2MAP3K7g1CDX2g1_IFNg.tsv", show_col_types = F)
+```
+
+
+#3. Plotting using volcano plot (L2FC vs pvalue) - different layout:
+```{r}
+
+#CDX2g1_CTRL
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit <- "NON"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0.1] <- "High"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0] <- "High"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < 0] <- "Low"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL <- HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL[order(HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit), ]
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label <- NA
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0.1 | HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < -0.1] <- HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange != "NO"]
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene == "CDX2"] <- "CDX2"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene == "CHD1"] <- "CHD1"
+HT29_CDX2g1_CTRL <- ggplot(HT29_CDX2g1_CTRL_vs_HT29_NTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CDX2g1 72h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 009)
+
+HT29_CDX2g1_CTRL
+
+ggsave("HT29_CDX2g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CDX2g1_IFNg_72h
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit <- "NON"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0.1] <- "High"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange < -0.1] <- "Low"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CDX2g1_72h_vs_HT29_NTC_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Expression[HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0] <- "High"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Expression[HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange < 0] <- "Low"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Expression[HT29_CDX2g1_72h_vs_HT29_NTC_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h <- HT29_CDX2g1_72h_vs_HT29_NTC_72h[order(HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit), ]
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Label <- NA
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0.1 | HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange < -0.1] <- HT29_CDX2g1_72h_vs_HT29_NTC_72h$gene[HT29_CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange != "NO"]
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CDX2g1_72h_vs_HT29_NTC_72h$gene == "CDX2"] <- "CDX2"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CDX2g1_72h_vs_HT29_NTC_72h$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CDX2g1_72h_vs_HT29_NTC_72h$gene == "CHD1"] <- "CHD1"
+HT29_CDX2g1_72h <- ggplot(HT29_CDX2g1_72h_vs_HT29_NTC_72h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CDX2g1 72h") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 010)
+
+HT29_CDX2g1_72h
+
+ggsave("HT29_CDX2g1_72h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CHD1g2/MAP3K7g2_CTRL
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit <- "NON"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0.1] <- "High"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0] <- "High"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < 0] <- "Low"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL <- HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL[order(HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit), ]
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Label <- NA
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0.1 | HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < -0.1] <- HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$gene[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange != "NO"]
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$gene == "CDX2"] <- "CDX2"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2MAP3K7g1_CTRL <- ggplot(HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2/MAP3K7g1 CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 011)
+
+HT29_CHD1g2MAP3K7g1_CTRL <- HT29_CHD1g2MAP3K7g1_CTRL + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_NTC_CTRL, Label == "MAP3K7"))
+
+HT29_CHD1g2MAP3K7g1_CTRL
+
+ggsave("HT29_CHD1g2MAP3K7g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CHD1g2/MAP3K7g2_IFNg_72h
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit <- "NON"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0.1] <- "High"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange < -0.1] <- "Low"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Expression[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0] <- "High"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Expression[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange < 0] <- "Low"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Expression[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h <- HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h[order(HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit), ]
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Label <- NA
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0.1 | HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange < -0.1] <- HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$gene[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$log2FoldChange != "NO"]
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$gene == "CDX2"] <- "CDX2"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2MAP3K7g1_72h <- ggplot(HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2/MAP3K7g1 72h") +
+  theme_classic(base_size = 20) + geom_text_repel(force = 0.1, force_pull = -5, seed = 012)
+
+HT29_CHD1g2MAP3K7g1_72h <- HT29_CHD1g2MAP3K7g1_72h + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1_72h_vs_HT29_NTC_72h, Label == "MAP3K7"))
+
+HT29_CHD1g2MAP3K7g1_72h
+
+ggsave("HT29_CHD1g2MAP3K7g1_72h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CHD1g2/MAP3K7g2/CDX2g1_CTRL
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit <- "NON"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0.1] <- "High"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0] <- "High"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < 0] <- "Low"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Expression[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL <- HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL[order(HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange_Hit), ]
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label <- NA
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange > 0.1 | HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange < -0.1] <- HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$log2FoldChange != "NO"]
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene == "CDX2"] <- "CDX2"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$Label[HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL <- ggplot(HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2/MAP3K7g1/CDX2g1 CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 013)
+
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL <- HT29_CHD1g2MAP3K7g1CDX2g1_CTRL + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1CDX2g1_CTRL_vs_HT29_NTC_CTRL, Label == "MAP3K7"))
+
+HT29_CHD1g2MAP3K7g1CDX2g1_CTRL
+
+ggsave("HT29_CHD1g2MAP3K7g1CDX2g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CHD1g2/MAP3K7g2/CDX2g1_IFNg_72h
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit <- "NON"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0.1] <- "High"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange < -0.1] <- "Low"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Expression[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0] <- "High"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Expression[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange < 0] <- "Low"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Expression[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h <- HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h[order(HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange_Hit), ]
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Label <- NA
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange > 0.1 | HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange < -0.1] <- HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$gene[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$log2FoldChange != "NO"]
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$gene == "CDX2"] <- "CDX2"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$Label[HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2MAP3K7g1CDX2g1_72h <- ggplot(HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "HT-29 CHD1g2/MAP3K7g1/CDX2g1 72h") +
+  theme_classic(base_size = 20) + geom_text_repel(force = 0.09, seed = 014)
+
+HT29_CHD1g2MAP3K7g1CDX2g1_72h <- HT29_CHD1g2MAP3K7g1CDX2g1_72h + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h, Label == "MAP3K7"))
+HT29_CHD1g2MAP3K7g1CDX2g1_72h <- HT29_CHD1g2MAP3K7g1CDX2g1_72h + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h, Label == "CHD1"))
+HT29_CHD1g2MAP3K7g1CDX2g1_72h <- HT29_CHD1g2MAP3K7g1CDX2g1_72h + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1CDX2g1_72h_vs_HT29_NTC_72h, Label == "CDX2"))
+
+HT29_CHD1g2MAP3K7g1CDX2g1_72h
+
+ggsave("HT29_CHD1g2MAP3K7g1CDX2g1_72h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CHD1g2/MAP3K7g1_CTRL vs CHD1g2/MAP3K7g1/CDX2g1_CTRL
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange_Hit <- "NON"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange > 0.1] <- "High"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange < -0.1] <- "Low"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Expression[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange > 0] <- "High"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Expression[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange < 0] <- "Low"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Expression[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL <- HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL[order(HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange_Hit), ]
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Label <- NA
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange > 0.1 | HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange < -0.1] <- HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$gene[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$log2FoldChange != "NO"]
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$gene == "CDX2"] <- "CDX2"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$Label[HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL$gene == "CHD1"] <- "CHD1"
+HT29_CHD1g2MAP3K7g1_vs_CHD1g2MAP3K7g1CDX2g1_CTRL <- ggplot(HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "CHD1g2/MAP3K7g1_CTRL vs CHD1g2/MAP3K7g1/CDX2g1_CTRL") +
+  theme_classic(base_size = 20) + geom_text_repel(seed = 015)
+
+HT29_CHD1g2MAP3K7g1_vs_CHD1g2MAP3K7g1CDX2g1_CTRL
+
+ggsave("HT29_CHD1g2MAP3K7g1_CTRL_vs_HT29_CHD1g2MAP3K7g1CDX2g1_CTRL.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+
+#CHD1g2/MAP3K7g1_IFNg_72h vs CHD1g2/MAP3K7g1/CDX2g1_IFNg_72h
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange_Hit <- "NON"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange > 0.1] <- "High"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange < -0.1] <- "Low"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange_Hit[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Expression[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange > 0] <- "High"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Expression[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange < 0] <- "Low"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Expression[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$pvalue > 0.05] <- "Not Significant"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h <- HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h[order(HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange_Hit), ]
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Label <- NA
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange > 0.1 | HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange < -0.1] <- HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$gene[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$log2FoldChange != "NO"]
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$gene == "CDX2"] <- "CDX2"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$gene == "MAP3K7"] <- "MAP3K7"
+HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$Label[HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h$gene == "CHD1"] <- "CHD1"
+
+HT29_CHD1g2MAP3K7g1_vs_CHD1g2MAP3K7g1CDX2g1_72h <- ggplot(HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h, aes(x = log2FoldChange, y = -log10(pvalue), label = Label)) +
+  geom_point(aes(color = Expression), size = 3) + scale_color_manual(values = c("red", "blue","grey")) + labs(x = "Log2 Fold Change", y = "-log10(p-value)", title = "CHD1g2/MAP3K7g1_72h vs CHD1g2/MAP3K7g1/CDX2g1_72h") +
+  theme_classic(base_size = 20) + geom_text_repel(force = 0.01, seed = 16)
+
+HT29_CHD1g2MAP3K7g1_vs_CHD1g2MAP3K7g1CDX2g1_72h <- HT29_CHD1g2MAP3K7g1_vs_CHD1g2MAP3K7g1CDX2g1_72h + geom_text_repel(data = subset(HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h, Label == "MAP3K7"))
+
+HT29_CHD1g2MAP3K7g1_vs_CHD1g2MAP3K7g1CDX2g1_72h
+
+ggsave("HT29_CHD1g2MAP3K7g1_72h_vs_HT29_CHD1g2MAP3K7g1CDX2g1_72h.eps", width = 12, height = 8.6, path ="/Users/aw34/Documents/Analysis_programs/R/Graph_exports/HT29_CHD1MAP3K7CDX2/Volcano plots/")
+```
