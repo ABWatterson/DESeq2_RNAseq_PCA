@@ -1,0 +1,213 @@
+---
+title: "DESeq2_PCA"
+author: "Alex Watterson"
+date: "2024-06-20"
+output: html_document
+---
+DSeq2 analysis
+
+```{r}
+library(DESeq2)
+library(dbplyr)
+library(tidyverse)
+library(tibble)
+library("vsn")
+library(DEP)
+library("pheatmap")
+library("RColorBrewer")
+library("glmpca")
+# test timecourse
+library("fission")
+library("apeglm")
+library(limma)
+library(ashr)
+library(vidger)
+```
+
+```{r}
+#Import and process data
+
+#Add the location where you have stored the merged counts for analysis
+data_folder <- "/Users/wattersa/Downloads/DESeq2_All_RNAseq_PCA-main/DESeq2/"
+
+#Add the location where you would like the output files to be saved
+results_folder="/Users/wattersa/Downloads/DESeq2_All_RNAseq_PCA-main/DESeq2/HT29_DKO/"
+
+# load merged counts
+#df_count <-read_tsv(paste(data_folder, "HT29_DKO_merged_count.tsv", sep="/"), show_col_types = F)
+#df_count <-read_csv(paste(data_folder, "HT29_TKO_merged_count.csv", sep="/"), show_col_types = F)
+#df_count <-read_csv(paste(data_folder, "VCaP_DKO_merged_count.csv", sep="/"), show_col_types = F)
+
+df_count
+
+#load metadat
+#samples <-read_csv(paste(data_folder, "HT29_DKO_design.csv", sep="/"), show_col_types = F)
+#samples <-read_csv(paste(data_folder, "HT29_TKO_design.csv", sep="/"), show_col_types = F)
+#samples <-read_csv(paste(data_folder, "VCaP_DKO_designt.csv", sep="/"), show_col_types = F)
+coldata <- samples[,c("replicate","condition","group","timepoint")]
+coldata$replicate <- factor(coldata$replicate)
+coldata$condition <- factor(coldata$condition)
+coldata$group <- factor(coldata$group)
+coldata$timepoint <- factor(coldata$timepoint)
+rownames(coldata)<-coldata$replicate
+
+# created all vs all pairwise comparisons
+design<-model.matrix(~0+condition,coldata) # ---follow from here in section 7.6 from doc https://bioconductor.org/packages/release/workflows/vignettes/RNAseq123/inst/doc/designmatrices.html
+
+
+# check duplicates
+table(duplicated(df_count$gene))
+# find duplicate rows and concatenate ensid and gene if duplicate rows are found
+tmp_df<- df_count %>%  
+  #filter(biotype == "protein_coding") %>% # filtering before deseq analysis is not recommended as this will hamper DESeq2 size factor and dispersion calculation  
+              filter(rowSums(dplyr::select(.,-(ensid:longest_isoform))) > 0) %>% # ignore metadata columns and filter rows with 0 count...
+              group_by(gene) %>%
+              mutate(gene_id = case_when( n()>1 ~ paste(ensid,gene,sep="_"), TRUE ~ gene), .before = ensid ) %>% 
+             # concat ensid_gene for duplicate gene rows
+              ungroup()%>%
+              dplyr::select(!(ensid:longest_isoform))
+ 
+table(duplicated(tmp_df$gene_id))
+df_coding_filtered<-data.frame(tmp_df,row.names = 1, stringsAsFactors=FALSE, check.names = FALSE)
+
+# check all samples in metedata and count matrix
+all(rownames(coldata) %in% colnames(df_coding_filtered))
+all(rownames(coldata) == colnames(df_coding_filtered)) # if false set the correct order
+df_coding_filtered <- df_coding_filtered[, rownames(coldata)] # select row names in order
+
+# add pseudo count of 1 to avoid issue with subset of 0 count genes
+df_refilter_subset <- df_coding_filtered + 1
+
+# create deseq2 matrix
+dds <- DESeqDataSetFromMatrix(countData = df_refilter_subset,
+                              colData = coldata,
+                              design = ~0+condition
+                              )
+
+
+#Additing addtional data
+featureData <- data.frame(gene=rownames(df_refilter_subset))
+mcols(dds) <- DataFrame(mcols(dds), featureData)
+mcols(dds)
+dds
+#https://combine-australia.github.io/RNAseq-R/slides/RNASeq_filtering_qc.pdf
+#https://bioconductor.org/packages/devel/bioc/vignettes/DESeq2/inst/doc/DESeq2.html#htseq
+
+
+# filtering of low count genes
+keep <- rowSums(counts(dds) >= 20) >= 6 # smallest group of samples = 6
+dds <- dds[keep,]
+dds
+
+# varinace stabilisation test
+vsd <- vst(dds, blind = FALSE)
+# plot distance matrix
+sampleDists <- dist(t(assay(vsd)))
+sampleDists
+sampleDistMatrix <- as.matrix( sampleDists )
+rownames(sampleDistMatrix) <- paste(vsd$replicate,vsd$timepoint,sep="_")
+colnames(sampleDistMatrix) <- NULL
+colors <- colorRampPalette( rev(brewer.pal(9, "Blues")) )(255)
+pheatmap <- pheatmap(sampleDistMatrix, #Alex changed this (added a name for the plot)
+         main="Euclidean distance between samples based on VST (variance stabilizing transformation)",
+         clustering_distance_rows = sampleDists,
+         clustering_distance_cols = sampleDists,
+         col = colors)
+```
+
+
+```{r}
+#Principal Component Analysis and Plots
+
+# Use rlog for transformation
+rld <- rlog(dds, blind=TRUE) # rlog transformation
+
+
+#Plot PCA with all replicate points
+
+# Generate PCA plot
+plotPCA(rld, intgroup="condition")
+pca_data <- plotPCA(rld, intgroup="condition", ntop = 500, returnData=TRUE)
+
+PCA_all_labeledggplot <- ggplot(pca_data, aes(x=PC1, y=PC2, color=condition)) +
+  geom_point(size=3) +
+  theme_classic()
+
+PCA_all_labeledggplot
+
+#ggsave("HT29_DKO_IFNg_PCA_all.eps", width = 12, height = 8.6, path = results_folder)
+
+
+#Plot PCA with averaged replicate points
+
+# Extract PCA data
+pca_data <- plotPCA(rld, intgroup="condition", returnData=TRUE)
+# Calculate mean PC1 and PC2 values per condition
+pca_means <- pca_data %>%
+  group_by(condition) %>%
+  summarise(PC1 = mean(PC1), PC2 = mean(PC2))
+# Plot the averaged points per condition
+PCA_averaged_labeled <- ggplot(pca_means, aes(x=PC1, y=PC2, color=condition)) +
+  geom_point(size=3) +
+  geom_text_repel(aes(label=condition), size = 3) +
+  theme_classic() +
+  labs(title = "PCA Plot - Mean Points per Condition",
+       x = "PC1", y = "PC2")
+
+PCA_averaged_labeled
+
+#ggsave("HT29_DKO_IFNg_PCA_averaged.eps", width = 12, height = 8.6, path = results_folder)
+
+```
+
+
+```{r}
+#Differential Expression analysis
+
+ddsTC <- DESeq(dds)
+
+#How many adjusted p-values were less than 0.05?
+#summary(res$padj < 0.05, na.rm=TRUE)
+
+# store normalised counts for given sample set
+norm_count_df<-counts(ddsTC, normalized=TRUE)
+write.table(data.frame("gene"=rownames(norm_count_df),norm_count_df), file=paste(results_folder,"normalised_desq_counts.tsv",sep="/"),sep="\t",row.names = FALSE)
+
+# store log transformed counts for given sample set
+log_counts <- assay(vsd)
+write.table(data.frame("gene"=rownames(log_counts),log_counts), file=paste(results_folder,"log_transformed_desq_counts.tsv",sep="/"),sep="\t",row.names = FALSE)
+
+#plotCounts(ddsTC, gene=which.min(res$padj), intgroup="condition")
+#vsScatterMatrix(data=dds, d.factor='condition', type='deseq', comp = NULL, title = TRUE, grid = TRUE, man.title = NULL)
+
+# create combinations for contrast matrix
+comparisons<-combn(levels(coldata$condition),2,simplify = FALSE)
+
+contrast_pair<-function(dds,comp_col,sample_pair){
+   sampleA=sample_pair[1]
+   sampleB=sample_pair[2]
+   sampleAB <- results(dds, contrast=c(comp_col, sampleA, sampleB), independentFiltering=TRUE, alpha=0.05, pAdjustMethod="BH", parallel=TRUE)
+   sampleAB<- lfcShrink(dds, contrast=c(comp_col,sampleA,sampleB), res=sampleAB, type="ashr")
+   res<- subset(sampleAB[order(sampleAB$pvalue),], na.rm=TRUE)
+   # remove p value filter and store everything.
+   #res<- subset(sampleAB, padj < 0.05)
+   return(res)
+}
+
+for (sample_pair in comparisons) {
+   sampleA=sample_pair[1]
+   sampleB=sample_pair[2]
+   my_outfile=paste(results_folder,sampleA,"_vs_",sampleB,".tsv",sep="")
+   res<-contrast_pair(ddsTC,'condition',sample_pair)
+   # added smallest possible number in R to avoid 0 log Inf error...
+   write.table(data.frame("gene"=rownames(res),"neg_log10_pval"=-log10(res$pvalue + 2.225074e-308 ),'neg_Log10_padj'=-log10(res$padj + 2.225074e-308) ,res), file=my_outfile,sep="\t",row.names = FALSE)
+}
+
+DESeq2::plotMA(res, ylim=c(-3,3), cex=.8)
+
+  write.table(data.frame("gene"=rownames(res),'Neg_Log10_pval'=-log10(res$pvalue + 2.225074e-308), 'Neg_Log10_padj'=-log10(res$padj + 2.225074e-308) ,res), file=my_outfile,sep="\t",row.names = FALSE)
+  
+write.table(mcols(res)$description, file = paste(results_folder, "metadata_output.txt", sep="/"),  col.names = FALSE, quote= FALSE)
+
+```
+
